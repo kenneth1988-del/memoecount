@@ -105,35 +105,24 @@ def make_excel_from_rows(rows):
     return output.getvalue()
 
 
-def render_items_table(items, table_key):
-    """Compact editable table for a group of items. Syncs Qty to session_state."""
-    if not items:
-        return
-    df = pd.DataFrame([{
-        '_id':        item['id'],
-        'Item':       item.get('name', ''),
-        'Unit Price': (f"{item.get('price', 0):.2f} / {item.get('unit', '')}"
-                      if item.get('unit') else f"{item.get('price', 0):.2f}"),
-        'Qty':        int(st.session_state.get(f"qty_{item['id']}", 0)),
-    } for item in items])
+def render_item_card(item, show_category: bool = False):
+    """Mobile-friendly vertical card: name + price on top, qty input below."""
+    unit  = item.get('unit', '')
+    price = item.get('price', 0)
+    price_str = f"{price:.2f} DKK / {unit}" if unit else f"{price:.2f} DKK"
 
-    edited = st.data_editor(
-        df[['Item', 'Unit Price', 'Qty']],
-        key=table_key,
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            'Item':       st.column_config.TextColumn(width="large",  disabled=True),
-            'Unit Price': st.column_config.TextColumn(width="medium", disabled=True),
-            'Qty':        st.column_config.NumberColumn(
-                              width="small", min_value=0, step=1, format="%d",
-                          ),
-        },
-        num_rows="fixed",
+    if show_category:
+        st.caption(f"{item.get('category', '')}  ·  {item.get('sub_category', '')}")
+    st.markdown(f"**{item.get('name', '')}**  \n{price_str}")
+    st.number_input(
+        label=item.get('name', ''),
+        min_value=0,
+        step=1,
+        value=st.session_state.get(f"qty_{item['id']}", 0),
+        key=f"qty_{item['id']}",
+        label_visibility="collapsed",
     )
-
-    for i, row in edited.iterrows():
-        st.session_state[f"qty_{df.at[i, '_id']}"] = int(row['Qty'] or 0)
+    st.divider()
 
 
 # ── Screen routing ─────────────────────────────────────────────────────────────
@@ -217,7 +206,8 @@ if st.session_state['screen'] == 'count':
                     if search_query.lower() in i.get('name', '').lower()]
         if filtered:
             st.caption(f"{len(filtered)} item(s) found")
-            render_items_table(filtered, "tbl_search")
+            for item in filtered:
+                render_item_card(item, show_category=True)
         else:
             st.info("No items match your search.")
     else:
@@ -229,9 +219,9 @@ if st.session_state['screen'] == 'count':
                 sub_cats = sorted(set(i.get('sub_category', 'Other') for i in cat_items))
                 for sub_cat in sub_cats:
                     sub_items = [i for i in cat_items if i.get('sub_category', 'Other') == sub_cat]
-                    safe = ''.join(c if c.isalnum() else '_' for c in f"{cat}_{sub_cat}")
                     with st.expander(f"{sub_cat}  ({len(sub_items)})", expanded=False):
-                        render_items_table(sub_items, f"tbl_{safe}")
+                        for item in sub_items:
+                            render_item_card(item)
 
     # Live preview
     st.divider()
