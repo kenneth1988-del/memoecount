@@ -1,7 +1,7 @@
 import io
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 import streamlit as st
 import pandas as pd
@@ -10,7 +10,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 from db_manager import db
-from invoice_parser import parse_invoice, categorize, sub_categorize
+from invoice_parser import parse_invoice, categorize
 
 load_dotenv()
 
@@ -48,22 +48,19 @@ if not st.session_state.get('authenticated'):
                 st.error("Incorrect PIN. Please try again.")
     st.stop()
 
-# ── Global CSS — prevent columns from stacking on narrow/mobile screens ────────
+# ── Scoped CSS — only targets column rows that contain a number input ──────────
+# Uses :has() so buttons, nav bar, and dashboard grids are completely unaffected.
 st.markdown("""
 <style>
-/* Keep every Streamlit column row horizontal regardless of screen width */
-div[data-testid="stHorizontalBlock"] {
+div[data-testid="stHorizontalBlock"]:has(div[data-testid="stNumberInput"]) {
     flex-wrap: nowrap !important;
     align-items: center !important;
     gap: 0.4rem !important;
 }
-div[data-testid="stColumn"] {
+div[data-testid="stHorizontalBlock"]:has(div[data-testid="stNumberInput"])
+    > div[data-testid="stColumn"] {
     min-width: 0 !important;
     overflow: hidden;
-}
-/* Remove the empty label space above number inputs whose label is hidden */
-div[data-testid="stNumberInput"] > label[data-testid="stWidgetLabel"] {
-    display: none !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -146,7 +143,8 @@ def render_item_card(item, show_category: bool = False):
             key=f"qty_{item['id']}",
             label_visibility="collapsed",
         )
-    st.divider()
+    st.markdown('<hr style="margin:3px 0 6px 0;border:none;border-top:1px solid #e8e4dc;">',
+                unsafe_allow_html=True)
 
 
 # ── Screen routing ─────────────────────────────────────────────────────────────
@@ -209,7 +207,7 @@ if st.session_state['screen'] == 'count':
                 'status':       'completed',
                 'items':        rows,
                 'total_value':  total_value,
-                'completed_at': datetime.utcnow().isoformat(),
+                'completed_at': datetime.now(timezone.utc).isoformat(),
             })
             st.session_state['screen'] = 'home'
             st.rerun()
@@ -296,7 +294,7 @@ with st.container(border=True):
                 db.collection('counts').document(count_id).set({
                     'name':             new_name.strip(),
                     'status':           'ongoing',
-                    'created_at':       datetime.utcnow().isoformat(),
+                    'created_at':       datetime.now(timezone.utc).isoformat(),
                     'saved_quantities': {},
                     'items':            [],
                     'total_value':      0.0,
