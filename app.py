@@ -56,7 +56,7 @@ st.markdown("""
 /* Force item-card rows to stay horizontal on all screen sizes */
 div[data-testid="stHorizontalBlock"]:has(div[data-testid="stNumberInput"]) {
     flex-wrap: nowrap !important;
-    align-items: center !important;
+    align-items: flex-start !important;
     gap: 0.25rem !important;
     border-bottom: 1px solid #e8e4dc;
     padding-bottom: 2px !important;
@@ -65,7 +65,6 @@ div[data-testid="stHorizontalBlock"]:has(div[data-testid="stNumberInput"]) {
 div[data-testid="stHorizontalBlock"]:has(div[data-testid="stNumberInput"])
     > div[data-testid="stColumn"] {
     min-width: 0 !important;
-    overflow: hidden;
     padding-top: 2px !important;
     padding-bottom: 2px !important;
 }
