@@ -151,11 +151,8 @@ def render_item_card(item, show_category: bool = False):
         st.caption(f"{item.get('category', '')}  ·  {item.get('sub_category', '')}")
     col_info, col_input = st.columns([3, 1])
     with col_info:
-        st.markdown(
-            f"**{item.get('name', '')}**<br>"
-            f"<small style='color:#666'>{price_str}</small>",
-            unsafe_allow_html=True,
-        )
+        st.markdown(f"**{item.get('name', '')}**")
+        st.caption(price_str)
     with col_input:
         st.number_input(
             label=item.get('name', ''),
