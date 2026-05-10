@@ -362,15 +362,67 @@ st.subheader(f"Active Counts  ({len(ongoing)})")
 if ongoing:
     cols = st.columns(3)
     for idx, count in enumerate(ongoing):
+        cid = count['id']
         with cols[idx % 3]:
             with st.container(border=True):
-                st.markdown(f"**{count.get('name', 'Unnamed')}**")
-                st.caption(f"Created: {count.get('created_at', '')[:10]}")
-                if st.button("Open", key=f"open_{count['id']}", use_container_width=True):
-                    st.session_state['screen']            = 'count'
-                    st.session_state['active_count_id']   = count['id']
-                    st.session_state['active_count_name'] = count.get('name', 'Count')
-                    st.rerun()
+                if st.session_state.get(f'_renaming_{cid}'):
+                    # ── Rename mode ────────────────────────────────────────────
+                    new_title = st.text_input(
+                        "New name", value=count.get('name', ''),
+                        key=f'_rename_input_{cid}', label_visibility='collapsed',
+                    )
+                    sv_col, cx_col = st.columns(2)
+                    with sv_col:
+                        if st.button("Save", key=f'_save_rename_{cid}',
+                                     use_container_width=True, type='primary'):
+                            if new_title.strip():
+                                db.collection('counts').document(cid).update(
+                                    {'name': new_title.strip()}
+                                )
+                            st.session_state[f'_renaming_{cid}'] = False
+                            st.rerun()
+                    with cx_col:
+                        if st.button("Cancel", key=f'_cancel_rename_{cid}',
+                                     use_container_width=True):
+                            st.session_state[f'_renaming_{cid}'] = False
+                            st.rerun()
+
+                elif st.session_state.get(f'_confirm_del_{cid}'):
+                    # ── Delete-confirm mode ────────────────────────────────────
+                    st.warning(f"Delete **{count.get('name', 'Unnamed')}**?")
+                    yes_col, cx_col = st.columns(2)
+                    with yes_col:
+                        if st.button("Yes, Delete", key=f'_del_yes_{cid}',
+                                     use_container_width=True, type='primary'):
+                            db.collection('counts').document(cid).delete()
+                            st.session_state[f'_confirm_del_{cid}'] = False
+                            st.rerun()
+                    with cx_col:
+                        if st.button("Cancel", key=f'_cancel_del_{cid}',
+                                     use_container_width=True):
+                            st.session_state[f'_confirm_del_{cid}'] = False
+                            st.rerun()
+
+                else:
+                    # ── Normal mode ────────────────────────────────────────────
+                    st.markdown(f"**{count.get('name', 'Unnamed')}**")
+                    st.caption(f"Created: {count.get('created_at', '')[:10]}")
+                    if st.button("Open", key=f"open_{cid}", use_container_width=True):
+                        st.session_state['screen']            = 'count'
+                        st.session_state['active_count_id']   = cid
+                        st.session_state['active_count_name'] = count.get('name', 'Count')
+                        st.rerun()
+                    ren_col, del_col = st.columns(2)
+                    with ren_col:
+                        if st.button("Rename", key=f'_rename_{cid}',
+                                     use_container_width=True):
+                            st.session_state[f'_renaming_{cid}'] = True
+                            st.rerun()
+                    with del_col:
+                        if st.button("Delete", key=f'_del_{cid}',
+                                     use_container_width=True):
+                            st.session_state[f'_confirm_del_{cid}'] = True
+                            st.rerun()
 else:
     st.info("No active counts.")
 
