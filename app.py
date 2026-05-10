@@ -59,7 +59,7 @@ div[data-testid="stHorizontalBlock"]:has(div[data-testid="stNumberInput"]) {
     align-items: flex-start !important;
     gap: 0.25rem !important;
     border-bottom: 1px solid #e8e4dc;
-    padding-bottom: 2px !important;
+    padding-bottom: 6px !important;
     margin-bottom: 0 !important;
 }
 div[data-testid="stHorizontalBlock"]:has(div[data-testid="stNumberInput"])
