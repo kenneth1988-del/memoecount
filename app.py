@@ -141,10 +141,17 @@ def make_excel_from_rows(rows):
 
 def auto_save_qty(item_id: str, count_id: str) -> None:
     """Persist a single item's quantity to counts/{count_id}.saved_quantities."""
-    qty = int(st.session_state.get(f"qty_{item_id}", 0))
-    db.collection('counts').document(count_id).update({
-        f'saved_quantities.{item_id}': qty
-    })
+    qty = int(st.session_state.get(f"qty_{count_id}_{item_id}", 0))
+    print(f"[SAVE] count={count_id[:8]}... item={item_id!r} qty={qty}")
+    cache_key = f'_qtys_cache_{count_id}'
+    saved = dict(st.session_state.get(cache_key, {}))
+    saved[item_id] = qty
+    st.session_state[cache_key] = saved
+    try:
+        db.collection('counts').document(count_id).update({'saved_quantities': saved})
+        print(f"[SAVE] OK — {len(saved)} item(s) in map")
+    except Exception as exc:
+        print(f"[SAVE] ERROR: {exc}")
 
 
 def render_item_card(item, count_id: str = None, show_category: bool = False):
@@ -152,6 +159,7 @@ def render_item_card(item, count_id: str = None, show_category: bool = False):
     unit  = item.get('unit', '')
     price = item.get('price', 0)
     price_str = f"{price:.2f} DKK / {unit}" if unit else f"{price:.2f} DKK"
+    key = f"qty_{count_id}_{item['id']}" if count_id else f"qty_{item['id']}"
 
     if show_category:
         st.caption(f"{item.get('category', '')}  ·  {item.get('sub_category', '')}")
@@ -168,8 +176,8 @@ def render_item_card(item, count_id: str = None, show_category: bool = False):
             label=item.get('name', ''),
             min_value=0,
             step=1,
-            value=st.session_state.get(f"qty_{item['id']}", 0),
-            key=f"qty_{item['id']}",
+            value=st.session_state.get(key, 0),
+            key=key,
             label_visibility="collapsed",
             **on_change_kwargs,
         )
@@ -191,15 +199,19 @@ if st.session_state['screen'] == 'count':
 
     # Restore saved quantities on first entry into this count
     if not st.session_state.get(f'_loaded_{count_id}'):
+        print(f"[LOAD] Fetching saved quantities for count: {count_id}")
         all_items = load_inventory()
         for item in all_items:
-            st.session_state[f"qty_{item['id']}"] = 0
+            st.session_state[f"qty_{count_id}_{item['id']}"] = 0
         count_doc = db.collection('counts').document(count_id).get()
+        saved: dict = {}
         if count_doc.exists:
             saved = count_doc.to_dict().get('saved_quantities', {})
             for item_id, qty in saved.items():
-                st.session_state[f"qty_{item_id}"] = qty
+                st.session_state[f"qty_{count_id}_{item_id}"] = int(qty)
+        st.session_state[f'_qtys_cache_{count_id}'] = dict(saved)
         st.session_state[f'_loaded_{count_id}'] = True
+        print(f"[LOAD] Loaded {len(saved)} saved quantities")
 
     # Top navigation bar
     col_back, col_title, col_finish = st.columns([2, 6, 2])
@@ -207,7 +219,7 @@ if st.session_state['screen'] == 'count':
         if st.button("Back to Dashboard", use_container_width=True):
             all_items = load_inventory()
             quantities = {
-                item['id']: st.session_state.get(f"qty_{item['id']}", 0)
+                item['id']: st.session_state.get(f"qty_{count_id}_{item['id']}", 0)
                 for item in all_items
             }
             quantities = {k: v for k, v in quantities.items() if v > 0}
@@ -223,7 +235,7 @@ if st.session_state['screen'] == 'count':
             all_items = load_inventory()
             rows = []
             for item in all_items:
-                qty = st.session_state.get(f"qty_{item['id']}", 0)
+                qty = st.session_state.get(f"qty_{count_id}_{item['id']}", 0)
                 if qty > 0:
                     rows.append({
                         'Category':          item.get('category', ''),
@@ -282,7 +294,7 @@ if st.session_state['screen'] == 'count':
     st.subheader("Live Preview")
     preview_rows = []
     for item in items:
-        qty = st.session_state.get(f"qty_{item['id']}", 0)
+        qty = st.session_state.get(f"qty_{count_id}_{item['id']}", 0)
         if qty > 0:
             preview_rows.append({
                 'Category':          item.get('category', ''),
