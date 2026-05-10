@@ -226,6 +226,7 @@ if st.session_state['screen'] == 'count':
             db.collection('counts').document(count_id).update({
                 'saved_quantities': quantities
             })
+            st.session_state[f'_loaded_{count_id}'] = False
             st.session_state['screen'] = 'home'
             st.rerun()
     with col_title:
