@@ -106,22 +106,26 @@ def make_excel_from_rows(rows):
 
 
 def render_item_card(item, show_category: bool = False):
-    """Mobile-friendly vertical card: name + price on top, qty input below."""
+    """Mobile-friendly card: name on its own line, small qty input left, price right."""
     unit  = item.get('unit', '')
     price = item.get('price', 0)
     price_str = f"{price:.2f} DKK / {unit}" if unit else f"{price:.2f} DKK"
 
     if show_category:
         st.caption(f"{item.get('category', '')}  ·  {item.get('sub_category', '')}")
-    st.markdown(f"**{item.get('name', '')}**  \n{price_str}")
-    st.number_input(
-        label=item.get('name', ''),
-        min_value=0,
-        step=1,
-        value=st.session_state.get(f"qty_{item['id']}", 0),
-        key=f"qty_{item['id']}",
-        label_visibility="collapsed",
-    )
+    st.markdown(f"**{item.get('name', '')}**")
+    col_qty, col_price = st.columns([1, 3])
+    with col_qty:
+        st.number_input(
+            label=item.get('name', ''),
+            min_value=0,
+            step=1,
+            value=st.session_state.get(f"qty_{item['id']}", 0),
+            key=f"qty_{item['id']}",
+            label_visibility="collapsed",
+        )
+    with col_price:
+        st.caption(price_str)
     st.divider()
 
 
