@@ -105,21 +105,35 @@ def make_excel_from_rows(rows):
     return output.getvalue()
 
 
-def render_item_row(item):
-    row = st.columns([5, 2, 2])
-    row[0].write(item.get('name', ''))
-    unit = item.get('unit', '')
-    price_str = (f"{item.get('price', 0):.2f} DKK / {unit}"
-                 if unit else f"{item.get('price', 0):.2f} DKK")
-    row[1].write(price_str)
-    row[2].number_input(
-        label=item['id'],
-        min_value=0,
-        step=1,
-        value=st.session_state.get(f"qty_{item['id']}", 0),
-        key=f"qty_{item['id']}",
-        label_visibility="collapsed",
+def render_items_table(items, table_key):
+    """Compact editable table for a group of items. Syncs Qty to session_state."""
+    if not items:
+        return
+    df = pd.DataFrame([{
+        '_id':        item['id'],
+        'Item':       item.get('name', ''),
+        'Unit Price': (f"{item.get('price', 0):.2f} / {item.get('unit', '')}"
+                      if item.get('unit') else f"{item.get('price', 0):.2f}"),
+        'Qty':        int(st.session_state.get(f"qty_{item['id']}", 0)),
+    } for item in items])
+
+    edited = st.data_editor(
+        df[['Item', 'Unit Price', 'Qty']],
+        key=table_key,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            'Item':       st.column_config.TextColumn(width="large",  disabled=True),
+            'Unit Price': st.column_config.TextColumn(width="medium", disabled=True),
+            'Qty':        st.column_config.NumberColumn(
+                              width="small", min_value=0, step=1, format="%d",
+                          ),
+        },
+        num_rows="fixed",
     )
+
+    for i, row in edited.iterrows():
+        st.session_state[f"qty_{df.at[i, '_id']}"] = int(row['Qty'] or 0)
 
 
 # ── Screen routing ─────────────────────────────────────────────────────────────
@@ -203,12 +217,7 @@ if st.session_state['screen'] == 'count':
                     if search_query.lower() in i.get('name', '').lower()]
         if filtered:
             st.caption(f"{len(filtered)} item(s) found")
-            hdr = st.columns([5, 2, 2])
-            hdr[0].markdown("**Item**")
-            hdr[1].markdown("**Unit Price**")
-            hdr[2].markdown("**Qty**")
-            for item in filtered:
-                render_item_row(item)
+            render_items_table(filtered, "tbl_search")
         else:
             st.info("No items match your search.")
     else:
@@ -220,13 +229,9 @@ if st.session_state['screen'] == 'count':
                 sub_cats = sorted(set(i.get('sub_category', 'Other') for i in cat_items))
                 for sub_cat in sub_cats:
                     sub_items = [i for i in cat_items if i.get('sub_category', 'Other') == sub_cat]
+                    safe = ''.join(c if c.isalnum() else '_' for c in f"{cat}_{sub_cat}")
                     with st.expander(f"{sub_cat}  ({len(sub_items)})", expanded=False):
-                        hdr = st.columns([5, 2, 2])
-                        hdr[0].markdown("**Item**")
-                        hdr[1].markdown("**Unit Price**")
-                        hdr[2].markdown("**Qty**")
-                        for item in sub_items:
-                            render_item_row(item)
+                        render_items_table(sub_items, f"tbl_{safe}")
 
     # Live preview
     st.divider()

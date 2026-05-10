@@ -1,0 +1,7 @@
+.env
+firebase_key.json.json
+__pycache__/
+*.pyc
+*.PDF
+*.pdf
+*.log
