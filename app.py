@@ -152,7 +152,7 @@ def render_item_card(item, show_category: bool = False):
     col_info, col_input = st.columns([3, 1])
     with col_info:
         st.markdown(
-            f"**{item.get('name', '')}**  \n"
+            f"**{item.get('name', '')}**<br>"
             f"<small style='color:#666'>{price_str}</small>",
             unsafe_allow_html=True,
         )
