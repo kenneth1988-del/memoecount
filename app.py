@@ -58,8 +58,7 @@ div[data-testid="stHorizontalBlock"]:has(div[data-testid="stNumberInput"]) {
     flex-wrap: nowrap !important;
     align-items: flex-start !important;
     gap: 0.25rem !important;
-    border-bottom: 1px solid #e8e4dc;
-    padding-bottom: 6px !important;
+    padding-bottom: 4px !important;
     margin-bottom: 0 !important;
 }
 div[data-testid="stHorizontalBlock"]:has(div[data-testid="stNumberInput"])
@@ -161,6 +160,10 @@ def render_item_card(item, show_category: bool = False):
             key=f"qty_{item['id']}",
             label_visibility="collapsed",
         )
+    st.markdown(
+        "<div style='border-top:1px solid #e8e4dc;margin:2px 0 0 0;padding:0;font-size:0;line-height:0;'></div>",
+        unsafe_allow_html=True,
+    )
 
 
 # ── Screen routing ─────────────────────────────────────────────────────────────
