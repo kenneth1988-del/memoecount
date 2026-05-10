@@ -139,7 +139,15 @@ def make_excel_from_rows(rows):
     return output.getvalue()
 
 
-def render_item_card(item, show_category: bool = False):
+def auto_save_qty(item_id: str, count_id: str) -> None:
+    """Persist a single item's quantity to counts/{count_id}.saved_quantities."""
+    qty = int(st.session_state.get(f"qty_{item_id}", 0))
+    db.collection('counts').document(count_id).update({
+        f'saved_quantities.{item_id}': qty
+    })
+
+
+def render_item_card(item, count_id: str = None, show_category: bool = False):
     """Compact side-by-side card: name+price stacked in left col, qty input in right col."""
     unit  = item.get('unit', '')
     price = item.get('price', 0)
@@ -152,6 +160,10 @@ def render_item_card(item, show_category: bool = False):
         st.markdown(f"**{item.get('name', '')}**")
         st.caption(price_str)
     with col_input:
+        on_change_kwargs = (
+            {'on_change': auto_save_qty, 'args': (item['id'], count_id)}
+            if count_id else {}
+        )
         st.number_input(
             label=item.get('name', ''),
             min_value=0,
@@ -159,6 +171,7 @@ def render_item_card(item, show_category: bool = False):
             value=st.session_state.get(f"qty_{item['id']}", 0),
             key=f"qty_{item['id']}",
             label_visibility="collapsed",
+            **on_change_kwargs,
         )
     st.markdown(
         "<div style='border-top:1px solid #e8e4dc;margin:2px 0 0 0;padding:0;font-size:0;line-height:0;'></div>",
@@ -248,7 +261,7 @@ if st.session_state['screen'] == 'count':
         if filtered:
             st.caption(f"{len(filtered)} item(s) found")
             for item in filtered:
-                render_item_card(item, show_category=True)
+                render_item_card(item, count_id=count_id, show_category=True)
         else:
             st.info("No items match your search.")
     else:
@@ -262,7 +275,7 @@ if st.session_state['screen'] == 'count':
                     sub_items = [i for i in cat_items if i.get('sub_category', 'Other') == sub_cat]
                     with st.expander(f"{sub_cat}  ({len(sub_items)})", expanded=False):
                         for item in sub_items:
-                            render_item_card(item)
+                            render_item_card(item, count_id=count_id)
 
     # Live preview
     st.divider()
