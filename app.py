@@ -48,19 +48,38 @@ if not st.session_state.get('authenticated'):
                 st.error("Incorrect PIN. Please try again.")
     st.stop()
 
-# ── Scoped CSS — only targets column rows that contain a number input ──────────
-# Uses :has() so buttons, nav bar, and dashboard grids are completely unaffected.
+# ── Scoped CSS — strictly targets column rows that contain a number input ───────
+# :has(stNumberInput) means ONLY item-card rows are affected.
+# Button rows, nav bar, and dashboard grids never match this selector.
 st.markdown("""
 <style>
+/* Force item-card rows to stay horizontal on all screen sizes */
 div[data-testid="stHorizontalBlock"]:has(div[data-testid="stNumberInput"]) {
     flex-wrap: nowrap !important;
     align-items: center !important;
-    gap: 0.4rem !important;
+    gap: 0.25rem !important;
+    border-bottom: 1px solid #e8e4dc;
+    padding-bottom: 2px !important;
+    margin-bottom: 0 !important;
 }
 div[data-testid="stHorizontalBlock"]:has(div[data-testid="stNumberInput"])
     > div[data-testid="stColumn"] {
     min-width: 0 !important;
     overflow: hidden;
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
+}
+/* Collapse paragraph margins inside item-card info column */
+div[data-testid="stHorizontalBlock"]:has(div[data-testid="stNumberInput"])
+    .stMarkdown p {
+    margin: 0 !important;
+    line-height: 1.25 !important;
+}
+/* Remove top gap above number input inside item-card rows */
+div[data-testid="stHorizontalBlock"]:has(div[data-testid="stNumberInput"])
+    div[data-testid="stNumberInput"] {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -123,18 +142,21 @@ def make_excel_from_rows(rows):
 
 
 def render_item_card(item, show_category: bool = False):
-    """Name on its own line; price (wide) + compact qty input (narrow) on one row."""
+    """Compact side-by-side card: name+price stacked in left col, qty input in right col."""
     unit  = item.get('unit', '')
     price = item.get('price', 0)
     price_str = f"{price:.2f} DKK / {unit}" if unit else f"{price:.2f} DKK"
 
     if show_category:
         st.caption(f"{item.get('category', '')}  ·  {item.get('sub_category', '')}")
-    st.markdown(f"**{item.get('name', '')}**")
-    col_price, col_qty = st.columns([4, 1])
-    with col_price:
-        st.caption(price_str)
-    with col_qty:
+    col_info, col_input = st.columns([3, 1])
+    with col_info:
+        st.markdown(
+            f"**{item.get('name', '')}**  \n"
+            f"<small style='color:#666'>{price_str}</small>",
+            unsafe_allow_html=True,
+        )
+    with col_input:
         st.number_input(
             label=item.get('name', ''),
             min_value=0,
@@ -143,8 +165,6 @@ def render_item_card(item, show_category: bool = False):
             key=f"qty_{item['id']}",
             label_visibility="collapsed",
         )
-    st.markdown('<hr style="margin:3px 0 6px 0;border:none;border-top:1px solid #e8e4dc;">',
-                unsafe_allow_html=True)
 
 
 # ── Screen routing ─────────────────────────────────────────────────────────────
