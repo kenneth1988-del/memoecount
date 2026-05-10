@@ -48,6 +48,26 @@ if not st.session_state.get('authenticated'):
                 st.error("Incorrect PIN. Please try again.")
     st.stop()
 
+# ── Global CSS — prevent columns from stacking on narrow/mobile screens ────────
+st.markdown("""
+<style>
+/* Keep every Streamlit column row horizontal regardless of screen width */
+div[data-testid="stHorizontalBlock"] {
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 0.4rem !important;
+}
+div[data-testid="stColumn"] {
+    min-width: 0 !important;
+    overflow: hidden;
+}
+/* Remove the empty label space above number inputs whose label is hidden */
+div[data-testid="stNumberInput"] > label[data-testid="stWidgetLabel"] {
+    display: none !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 
 @st.cache_data(ttl=300)
 def load_inventory():
@@ -106,22 +126,26 @@ def make_excel_from_rows(rows):
 
 
 def render_item_card(item, show_category: bool = False):
-    """Mobile-friendly vertical card: name + price on top, qty input below."""
+    """Name on its own line; price (wide) + compact qty input (narrow) on one row."""
     unit  = item.get('unit', '')
     price = item.get('price', 0)
     price_str = f"{price:.2f} DKK / {unit}" if unit else f"{price:.2f} DKK"
 
     if show_category:
         st.caption(f"{item.get('category', '')}  ·  {item.get('sub_category', '')}")
-    st.markdown(f"**{item.get('name', '')}**  \n{price_str}")
-    st.number_input(
-        label=item.get('name', ''),
-        min_value=0,
-        step=1,
-        value=st.session_state.get(f"qty_{item['id']}", 0),
-        key=f"qty_{item['id']}",
-        label_visibility="collapsed",
-    )
+    st.markdown(f"**{item.get('name', '')}**")
+    col_price, col_qty = st.columns([4, 1])
+    with col_price:
+        st.caption(price_str)
+    with col_qty:
+        st.number_input(
+            label=item.get('name', ''),
+            min_value=0,
+            step=1,
+            value=st.session_state.get(f"qty_{item['id']}", 0),
+            key=f"qty_{item['id']}",
+            label_visibility="collapsed",
+        )
     st.divider()
 
 
