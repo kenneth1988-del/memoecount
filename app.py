@@ -486,9 +486,11 @@ with st.expander("Update Prices (Upload PDF)", expanded=False):
                 unit    = item.get('unit', '')
                 sub_cat = item.get('sub_category', 'Other')
                 if doc_id in existing_ids:
+                    # Existing item: update price only — preserve manual
+                    # category, sub_category, and unit overrides.
                     db.collection('inventory').document(doc_id).update({
-                        'name': item['desc'], 'price': price,
-                        'unit': unit, 'sub_category': sub_cat,
+                        'name': item['desc'],
+                        'price': price,
                     })
                     updated += 1
                 else:
