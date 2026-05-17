@@ -530,7 +530,7 @@ with st.expander("Admin — Fix Categories", expanded=False):
                        if search.lower() in i.get('name', '').lower()]
 
     st.caption(f"Showing {len(admin_items)} items")
-    hdr = st.columns([5, 2, 2])
+    hdr = st.columns([4, 2, 2, 1, 1])
     hdr[0].markdown("**Item**")
     hdr[1].markdown("**Category**")
     hdr[2].markdown("**Sub-Category**")
@@ -539,17 +539,76 @@ with st.expander("Admin — Fix Categories", expanded=False):
         item_id     = item['id']
         current_cat = item.get('category', 'Dry')
         current_sub = item.get('sub_category', 'Other')
-        row = st.columns([5, 2, 2])
-        row[0].write(item.get('name', ''))
-        row[1].selectbox(
-            label=f"cat_{item_id}", options=CATEGORIES,
-            index=CATEGORIES.index(current_cat) if current_cat in CATEGORIES else 0,
-            key=f"cat_{item_id}", on_change=on_category_change, args=(item_id,),
-            label_visibility="collapsed",
-        )
-        row[2].selectbox(
-            label=f"sub_{item_id}", options=ALL_SUB_CATS,
-            index=ALL_SUB_CATS.index(current_sub) if current_sub in ALL_SUB_CATS else 8,
-            key=f"sub_{item_id}", on_change=on_sub_category_change, args=(item_id,),
-            label_visibility="collapsed",
-        )
+
+        if st.session_state.get(f'_admin_editing_{item_id}'):
+            # ── Inline rename row ──────────────────────────────────────────────
+            ecol, bcol = st.columns([5, 3])
+            with ecol:
+                new_name = st.text_input(
+                    "Name", value=item.get('name', ''),
+                    key=f'_edit_name_{item_id}', label_visibility='collapsed',
+                )
+            with bcol:
+                sv, cx = st.columns(2)
+                with sv:
+                    if st.button("Save", key=f'_save_name_{item_id}',
+                                 type='primary', use_container_width=True):
+                        if new_name.strip():
+                            db.collection('inventory').document(item_id).update(
+                                {'name': new_name.strip()}
+                            )
+                            load_inventory.clear()
+                        st.session_state[f'_admin_editing_{item_id}'] = False
+                        st.rerun()
+                with cx:
+                    if st.button("Cancel", key=f'_cancel_name_{item_id}',
+                                 use_container_width=True):
+                        st.session_state[f'_admin_editing_{item_id}'] = False
+                        st.rerun()
+
+        elif st.session_state.get(f'_admin_confirm_del_{item_id}'):
+            # ── Delete-confirm row ─────────────────────────────────────────────
+            dcol, bcol = st.columns([5, 3])
+            with dcol:
+                st.warning(f"Delete **{item.get('name', '')}**?")
+            with bcol:
+                yes, cx = st.columns(2)
+                with yes:
+                    if st.button("Yes, Delete", key=f'_del_yes_{item_id}',
+                                 type='primary', use_container_width=True):
+                        db.collection('inventory').document(item_id).delete()
+                        load_inventory.clear()
+                        st.session_state[f'_admin_confirm_del_{item_id}'] = False
+                        st.rerun()
+                with cx:
+                    if st.button("Cancel", key=f'_cancel_del_{item_id}',
+                                 use_container_width=True):
+                        st.session_state[f'_admin_confirm_del_{item_id}'] = False
+                        st.rerun()
+
+        else:
+            # ── Normal row ─────────────────────────────────────────────────────
+            row = st.columns([4, 2, 2, 1, 1])
+            row[0].write(item.get('name', ''))
+            row[1].selectbox(
+                label=f"cat_{item_id}", options=CATEGORIES,
+                index=CATEGORIES.index(current_cat) if current_cat in CATEGORIES else 0,
+                key=f"cat_{item_id}", on_change=on_category_change, args=(item_id,),
+                label_visibility="collapsed",
+            )
+            row[2].selectbox(
+                label=f"sub_{item_id}", options=ALL_SUB_CATS,
+                index=ALL_SUB_CATS.index(current_sub) if current_sub in ALL_SUB_CATS else 8,
+                key=f"sub_{item_id}", on_change=on_sub_category_change, args=(item_id,),
+                label_visibility="collapsed",
+            )
+            with row[3]:
+                if st.button("Edit", key=f'_admin_edit_{item_id}',
+                             use_container_width=True):
+                    st.session_state[f'_admin_editing_{item_id}'] = True
+                    st.rerun()
+            with row[4]:
+                if st.button("Del", key=f'_admin_del_{item_id}',
+                             use_container_width=True):
+                    st.session_state[f'_admin_confirm_del_{item_id}'] = True
+                    st.rerun()
